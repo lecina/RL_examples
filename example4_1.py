@@ -1,5 +1,10 @@
 import numpy as np
-import random
+
+"""
+	Example 4.1 of Reinforcement Learning: an introduction.
+
+	It contains an iterative method to compute the state-value function for a policy
+"""
 
 class States:
 	"""
@@ -140,6 +145,7 @@ def main():
 	print V
 	return
 
+	#We can check that it corresponds to the average reward using the policy
 	estimatedV = []
 	for s in range(n*n):
 		ngames = 1000
