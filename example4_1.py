@@ -4,6 +4,7 @@ import numpy as np
 	Example 4.1 of Reinforcement Learning: an introduction.
 
 	It contains an iterative method to compute the state-value function for a policy
+	and the first-visit MC prediction
 """
 
 class States:
@@ -120,15 +121,53 @@ def iterative_policy_evaluation(states, iterations, gamma=1):
 	return V
 
 def play_game(initial_state, states):
+	"""
+		Returns list of visited states and the corresponding reward after each action
+		Note that len(states) = len(rewards) + 1
+	"""
+
 	state = initial_state
 	finished = False
-	reward = 0
+	rewards = []
+	visited_states = [state]
 	while not finished:
 		state, r = states.get_action_resulting_state(state)
-		reward += r
+		visited_states.append(state)
+		rewards.append(r)
+
 		if state == 0 or state == 15:
 			finished = True
-	return state, reward
+
+	return visited_states, rewards
+
+def estimate_G(states, rewards):
+	found_states = set(states)
+	size = max(found_states)
+	Gs = []
+	for state in found_states:
+		first_visit = states.index(state)
+		G = sum(rewards[first_visit:])
+		Gs.append((state, G))
+	return Gs
+		
+
+def first_visit_monte_carlo_prediction(states, n):
+	nstates = n*n
+	estimatedV = np.zeros(nstates)
+	nappearances = np.zeros(nstates)
+	ngames = 1000
+	for i in range(ngames):
+		starting_state = i%nstates
+		visited_states, rewards = play_game(starting_state, states)
+		Gs = estimate_G(visited_states, rewards)
+
+		for state, G in Gs:
+			nappearances[state] += 1
+			estimatedV[state] += G
+
+	estimatedV /= nappearances
+
+	return estimatedV
 
 def main():
 	n = 4 #nstates = n*n
@@ -143,18 +182,9 @@ def main():
 	V = iterative_policy_evaluation(states, iterations=100, gamma=1)
 	print "Iterative policy evaluation:"
 	print V
-	return
 
 	#We can check that it corresponds to the average reward using the policy
-	estimatedV = []
-	for s in range(n*n):
-		ngames = 1000
-		total_reward = 0
-		for i in range(ngames):
-			state, reward =  play_game(s, states)
-			total_reward += reward
-		estimatedV.append(float(total_reward)/ngames)
-		print "Starting from:", s, "Avg reward:", float(total_reward)/ngames
+	estimatedV = first_visit_monte_carlo_prediction(states, n)
 	print "Estimated V:"
 	print estimatedV
 	 
