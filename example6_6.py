@@ -2,7 +2,6 @@ import numpy as np
 import random
 import matplotlib.pyplot as plt
 
-
 """
 	Example 6.6 of Reinforcement Learning: an introduction.
 
@@ -19,7 +18,8 @@ import matplotlib.pyplot as plt
 	Sarsa is an on-policy method that uses the action value of the next state
 	to update the current action value. The estimation of the action value
 	function, will incorporate the effects of the chosen strategy (e.g. e-greedy).
-	Expected Sarsa uses the expected Q value of the next state to 
+	Expected Sarsa uses the expected Q value of the next state to the current action
+	value. This has been used as on-policy, but can be extendet to be off-policy.
 
 	Q-learning uses the optimal value (greedy choice) of the next state (e-greedy
 	choice) to update the current action value. For this reason, it is an off-policy
@@ -56,6 +56,17 @@ class States:
 				print '{:3s}'.format(action.name),
 			print ""
 
+	def get_optimal_action_values(self):
+		value_state_for_optimal_action = []
+		for i in range(self.nrows)[::-1]:
+			values = []
+			for j in range(self.ncols):
+				state = self.states[i][j]
+				optimal_action_value = np.max(state.get_action_values())
+				values.append(optimal_action_value)
+			value_state_for_optimal_action.append(values)
+
+		return value_state_for_optimal_action
 
 	def add_row(self):
 		self.states.append([State(self.default_actions) for i in range(self.ncols)])
@@ -467,8 +478,8 @@ def main():
 	sarsa_states = build_states(n)
 
 	initial_states = [(0,0)]
-	alpha = 0.25
-	episodes = 500
+	alpha = 0.1
+	episodes = 100000
 	print "SARSA learning"
 	sarsa = Sarsa()
 	sarsa_length, sarsa_rewards, sarsa_nfalls = learn(sarsa, episodes, initial_states, sarsa_states, alpha)
@@ -536,6 +547,25 @@ def main():
 	plt.plot(range(len(avg_qlearning_nfalls)), avg_qlearning_nfalls, label='Q-learning')
 	plt.plot(range(len(avg_esarsa_nfalls)), avg_esarsa_nfalls, label='Expected SARSA')
 	plt.legend(bbox_to_anchor=(1.5, 0.5), loc=2, borderaxespad=0.)
+
+	plt.figure(2)
+	plt.suptitle("Action value for optimal action")
+	plt.subplot(221)
+	values_sarsa = sarsa_states.get_optimal_action_values()
+	plt.imshow(values_sarsa, cmap="hot")
+	plt.colorbar()
+	plt.title("Sarsa")
+	plt.subplot(222)
+	values_qlearning = qlearning_states.get_optimal_action_values()
+	plt.imshow(values_qlearning, cmap="hot")
+	plt.colorbar()
+	plt.title("Q-learning")
+	plt.subplot(223)
+	values_esarsa = expected_sarsa_states.get_optimal_action_values()
+	plt.imshow(values_esarsa, cmap="hot")
+	plt.colorbar()
+	plt.title("Expected Sarsa")
+
 	plt.show()
 
 if __name__ == "__main__":
