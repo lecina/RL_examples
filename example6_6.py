@@ -351,7 +351,7 @@ def build_states(n):
 	return states
 
 def average_measures(l):
-	avg_l = len(l)*[0]
+	avg_l = (len(l)-10)*[0]
 	for i in range(len(l)-10):
 		avg_l[i] = np.mean(l[i:i+10])
 	return avg_l
@@ -366,7 +366,7 @@ def main():
 
 	initial_states = [(0,0)]
 	alpha = 0.25
-	episodes = 1000
+	episodes = 500
 	print "SARSA learning"
 	sarsa_length, sarsa_rewards, sarsa_nfalls = sarsa(episodes, initial_states, sarsa_states, alpha)
 
@@ -410,8 +410,9 @@ def main():
 
 	plt.subplot(223)
 	plt.title("Average Number of falls")
-	plt.plot(range(len(avg_sarsa_nfalls)), avg_sarsa_nfalls)
-	plt.plot(range(len(avg_qlearning_nfalls)), avg_qlearning_nfalls)
+	plt.plot(range(len(avg_sarsa_nfalls)), avg_sarsa_nfalls, label='SARSA')
+	plt.plot(range(len(avg_qlearning_nfalls)), avg_qlearning_nfalls, label='Q-learning')
+	plt.legend(bbox_to_anchor=(1.5, 0.5), loc=2, borderaxespad=0.)
 	plt.show()
 
 if __name__ == "__main__":
