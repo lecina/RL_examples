@@ -1,5 +1,7 @@
 import numpy as np
 import random
+import matplotlib.pyplot as plt
+
 
 """
 	Example 6.6 of Reinforcement Learning: an introduction.
@@ -24,6 +26,17 @@ class States:
 
 		self.do_not_increase_rows = do_not_increase_rows
 
+	def print_optimal_policy(self):
+		for i in range(self.nrows)[::-1]:
+			print str(i).ljust(4,' '),
+			for j in range(self.ncols):
+				state = self.states[i][j]
+				optimal_action_num = np.argmax(state.get_action_values())
+				action = state.get_actions()[optimal_action_num]
+				print '{:3s}'.format(action.name),
+			print ""
+
+
 	def add_row(self):
 		self.states.append([State(self.default_actions) for i in range(self.ncols)])
 		self.nrows += 1
@@ -42,7 +55,7 @@ class States:
 		s = ""
 		for i, row in enumerate(self.states):
 			for j, state in enumerate(row):
-				s += "State: row:%d, col:%d, actions: %s\n"%(i, j, state.__str__())
+				s += "State: (%d, %d), actions: %s\n"%(i, j, state.__str__())
 		return s
 
 	def get_states(self):
@@ -55,9 +68,10 @@ class States:
 
 	def take_action(self, row, col, action_number):
 		"""
-			Takes action number "action_number" when in state (row,col)
-			Note that (row,col) must be in bounds. However, returning
-			(row,col) may be out of bounds if "do_not_increase_rows" = false)
+			Takes action number "action_number" of state (row,col)
+			Note that (row,col) must be in bounds. 
+			However, the returning (row,col) may be out of bounds 
+			when  "do_not_increase_rows" = false
 		"""
 		if row >= self.nrows or col >= self.ncols:
 			print "Invalid state"
@@ -71,18 +85,18 @@ class States:
 
 		action = state.actions[action_number]
 
-		if action.name == "left": 
+		if action.name == ACTION_TYPE_TO_STRING["left"]: 
 			col =  max(col - 1, 0)
-		elif action.name == "right": 
+		elif action.name == ACTION_TYPE_TO_STRING["right"]: 
 			col = min(col + 1, self.ncols-1)
-		elif action.name == "up": 
+		elif action.name == ACTION_TYPE_TO_STRING["up"]: 
 			if self.do_not_increase_rows == True:
 				row = min(row + 1, self.nrows-1)
 			else:
 				row = row + 1 #we assume no upper limit
-		elif action.name == "down": 
+		elif action.name == ACTION_TYPE_TO_STRING["down"]: 
 			row = max(row - 1, 0)
-		elif action.name == "fall_into_cliff":
+		elif action.name == ACTION_TYPE_TO_STRING["fall_into_cliff"]:
 			col = 0
 			row = 0
 		else:
@@ -135,7 +149,16 @@ class Action:
 		self.reward = reward
 	
 	def __str__(self):
-		return "%s, %.2f"%(self.name, self.reward)
+		return "%s"%(self.name)
+
+ACTION_TYPE_TO_STRING = {
+	"left" : "l",
+	"right" : "r",
+	"up" : "u",
+	"down" : "d",
+	"fall_into_cliff" : "f",
+	"finish" : "F"
+}
 
 from abc import ABCMeta, abstractmethod
 class Strategy:
@@ -195,16 +218,16 @@ def play_game(initial_state, states):
 def sarsa(episodes, initial_states, states_object, alpha):
 	total_length = []
 	total_rewards = []
+	total_nfalls = []
 	for i in range(episodes):	
 		initial_state = initial_states[i%len(initial_states)]
-		visited_states, rewards = sarsa_single_episode(initial_state, states_object, alpha)
+		visited_states, rewards, nfalls = sarsa_single_episode(initial_state, states_object, alpha)
 
 		total_length.append(len(visited_states))
 		total_rewards.append(sum(rewards))
+		total_nfalls.append(nfalls)
 
-		print "Length:", len(visited_states), "rewards:", sum(rewards)
-
-	return total_length, total_rewards
+	return total_length, total_rewards, total_nfalls
 
 def sarsa_single_episode(initial_state, states, alpha=0.1, gamma = 1):
 	"""
@@ -224,6 +247,7 @@ def sarsa_single_episode(initial_state, states, alpha=0.1, gamma = 1):
 
 	state = states.get_state(row, col)
 	action_number = egreedy.get_action(state)
+	nfalls = 0
 	while not finished:
 		old_row = row
 		old_col = col
@@ -236,7 +260,6 @@ def sarsa_single_episode(initial_state, states, alpha=0.1, gamma = 1):
 
 		prev_action_value = state.get_action_values()[action_number]
 		updated_prev_action_value = prev_action_value + alpha * (r + gamma * new_action_value - prev_action_value)
-		#print "(%d,%d) action:%d, Q(S,A)=%.2f (Q(S,A)=%.2f) --> (%d, %d) action:%d, Q(S',A')=%.2f"%(old_row, old_col, action_number, updated_prev_action_value, prev_action_value, row, col, new_action_number, new_action_value)
 		state.set_action_value(action_number, updated_prev_action_value)
 
 		state = new_state
@@ -248,24 +271,148 @@ def sarsa_single_episode(initial_state, states, alpha=0.1, gamma = 1):
 		if states.game_finished(row,col):
 			finished = True
 
-	return visited_states, rewards
+		if row == 0 and col > 0 and col < 11:
+			nfalls += 1
+
+	return visited_states, rewards, nfalls
+
+def qlearning(episodes, initial_states, states_object, alpha):
+	total_length = []
+	total_rewards = []
+	total_nfalls = []
+	for i in range(episodes):	
+		initial_state = initial_states[i%len(initial_states)]
+		visited_states, rewards, nfalls = qlearning_single_episode(initial_state, states_object, alpha)
+
+		total_length.append(len(visited_states))
+		total_rewards.append(sum(rewards))
+		total_nfalls.append(nfalls)
+
+	return total_length, total_rewards, total_nfalls
+
+def qlearning_single_episode(initial_state, states, alpha=0.1, gamma = 1):
+	"""
+		initial_state is a tuple (row, col)
+	"""
+	finished = False
+	rewards = []
+	visited_states = [initial_state]
+
+	params = Strategy_params()	
+	params.set_epsilon(0.1)
+
+	egreedy = E_greedy(params)
+	greedy = Greedy(None)
+
+	row = initial_state[0]
+	col = initial_state[1]
+
+	nfalls = 0
+	while not finished:
+		state = states.get_state(row, col)
+		action_number = egreedy.get_action(state)
+
+		old_row = row
+		old_col = col
+		row, col, r = states.take_action(row, col, action_number)
+
+		new_state = states.get_state(row, col)
+		new_action_number = greedy.get_action(new_state)
+		new_action_value = new_state.get_action_values()[new_action_number]
+
+		prev_action_value = state.get_action_values()[action_number]
+		updated_prev_action_value = prev_action_value + alpha * (r + gamma * new_action_value - prev_action_value)
+		state.set_action_value(action_number, updated_prev_action_value)
+
+		state = new_state
+		
+		visited_states.append((row, col))
+		rewards.append(r)
+
+		if states.game_finished(row,col):
+			finished = True
+
+		if row == 0 and col > 0 and col < 11:
+			nfalls += 1
+
+	return visited_states, rewards, nfalls
+def build_states(n):
+	states = States( 	n, 
+						default_actions = [	(ACTION_TYPE_TO_STRING["left"],-1), 
+											(ACTION_TYPE_TO_STRING["right"],-1), 
+											(ACTION_TYPE_TO_STRING["up"],-1), 
+											(ACTION_TYPE_TO_STRING["down"],-1)], 
+						do_not_increase_rows = True)
+
+	for i in range(1,n-1):
+		states.add_state(0, i, [(ACTION_TYPE_TO_STRING["fall_into_cliff"],-100)])
+	states.add_state(0, n-1, [(ACTION_TYPE_TO_STRING["finish"],0)])
+
+	return states
+
+def average_measures(l):
+	avg_l = len(l)*[0]
+	for i in range(len(l)-10):
+		avg_l[i] = np.mean(l[i:i+10])
+	return avg_l
 
 def main():
-	random.seed(123)
+	seed = 123
+	random.seed(seed)
+	np.random.seed(seed)
 
 	n = 12
-	states = States(n, default_actions = [("left",-1), ("right",-1), ("up",-1), ("down",-1)], do_not_increase_rows = True)
-	for i in range(1,n-1):
-		states.add_state(0, i, [("fall_into_cliff",-100)])
-	states.add_state(0, n-1, [("finish",0)])
-	print states
+	sarsa_states = build_states(n)
 
 	initial_states = [(0,0)]
-	alpha = 1.0
-	episodes = 500
-	a,b = sarsa(episodes, initial_states, states, alpha)
+	alpha = 0.25
+	episodes = 1000
+	print "SARSA learning"
+	sarsa_length, sarsa_rewards, sarsa_nfalls = sarsa(episodes, initial_states, sarsa_states, alpha)
 
-	print states
+
+	qlearning_states = build_states(n)
+	print "Q-learning"
+	qlearning_length, qlearning_rewards, qlearning_nfalls = qlearning(episodes, initial_states, qlearning_states, alpha)
+
+
+	avg_sarsa_length = average_measures(sarsa_length)
+	avg_sarsa_rewards = average_measures(sarsa_rewards)
+	avg_sarsa_nfalls = average_measures(sarsa_nfalls)
+	avg_qlearning_length = average_measures(qlearning_length)
+	avg_qlearning_rewards = average_measures(qlearning_rewards)
+	avg_qlearning_nfalls = average_measures(qlearning_nfalls)
+
+
+	print "Sarsa action-value estimated function"
+	print sarsa_states
+	print "\n===========\n"
+	print "Optimal SARSA policy"
+	sarsa_states.print_optimal_policy()
+	print "\n===========\n===========\n"
+
+	print "Q-learning action-value estimated function"
+	print qlearning_states
+	print "\n===========\n"
+	print "Optimal Q-learning policy"
+	qlearning_states.print_optimal_policy()
+
+	plt.figure(1)
+	plt.subplot(221)
+	plt.title("Average Rewards")
+	plt.plot(range(len(avg_sarsa_rewards)), avg_sarsa_rewards)
+	plt.plot(range(len(avg_qlearning_rewards)), avg_qlearning_rewards)
+
+	plt.subplot(222)
+	plt.title("Average Length")
+	plt.plot(range(len(avg_sarsa_length)), avg_sarsa_length)
+	plt.plot(range(len(avg_qlearning_length)), avg_qlearning_length)
+
+	plt.subplot(223)
+	plt.title("Average Number of falls")
+	plt.plot(range(len(avg_sarsa_nfalls)), avg_sarsa_nfalls)
+	plt.plot(range(len(avg_qlearning_nfalls)), avg_qlearning_nfalls)
+	plt.show()
 
 if __name__ == "__main__":
 	main()
