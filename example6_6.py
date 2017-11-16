@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 	to update the current action value. The estimation of the action value
 	function, will incorporate the effects of the chosen strategy (e.g. e-greedy).
 	Expected Sarsa uses the expected Q value of the next state to the current action
-	value. This has been used as on-policy, but can be extendet to be off-policy.
+	value. This has been used as on-policy, but can be extended to be off-policy.
 
 	Q-learning uses the optimal value (greedy choice) of the next state (e-greedy
 	choice) to update the current action value. For this reason, it is an off-policy
