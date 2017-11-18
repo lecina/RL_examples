@@ -212,7 +212,8 @@ class Greedy(Strategy):
 		self.params = None
 
 	def get_action(self, state):
-		return np.argmax(state.get_action_values())
+		optimal_actions = np.argwhere(state.get_action_values() == np.amax(state.get_action_values())).flatten()
+		return np.random.choice(optimal_actions)
 
 	def get_policy(self, state):
 		policy = [0]*len(state.get_actions())
@@ -228,7 +229,8 @@ class E_greedy(Strategy):
 		if random.random() < self.params.get_epsilon():
 			return np.random.choice(len(state.get_action_values()))
 		else:
-			return np.argmax(state.get_action_values())
+			optimal_actions = np.argwhere(state.get_action_values() == np.amax(state.get_action_values())).flatten()
+			return np.random.choice(optimal_actions)
 
 	def get_policy_for_state(self, state):
 		random_prob = self.params.get_epsilon()
@@ -251,22 +253,6 @@ class Strategy_params:
 
 	def get_epsilon(self):
 		return self.epsilon
-
-def play_game(initial_state, states):
-	"""
-		initial_state is a tuple (row, col)
-	"""
-	finished = False
-	rewards = [0]
-	visited_states = [initial_state]
-	while not finished:
-		row, col, r = states.get
-
-		visited_states.append((row, col))
-		rewards.append(r)
-
-		if state.game_finished(row,col):
-			finished = True
 
 from abc import ABCMeta, abstractmethod
 class LearningStrategy:
@@ -301,9 +287,6 @@ class Sarsa(LearningStrategy):
 		action_number = egreedy.get_action(state)
 		nfalls = 0
 		while not finished:
-			old_row = row
-			old_col = col
-
 			row, col, r = states.take_action(row, col, action_number)
 			
 			new_state = states.get_state(row, col)
@@ -354,8 +337,6 @@ class Qlearning(LearningStrategy):
 			state = states.get_state(row, col)
 			action_number = egreedy.get_action(state)
 
-			old_row = row
-			old_col = col
 			row, col, r = states.take_action(row, col, action_number)
 
 			new_state = states.get_state(row, col)
@@ -404,8 +385,6 @@ class Expected_sarsa(LearningStrategy):
 			state = states.get_state(row, col)
 			action_number = egreedy.get_action(state)
 
-			old_row = row
-			old_col = col
 			row, col, r = states.take_action(row, col, action_number)
 
 			#We use the expected action value following the egreedy strategy
