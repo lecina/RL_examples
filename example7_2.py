@@ -7,8 +7,13 @@ import matplotlib.pyplot as plt
 
     Summary.
     Random walk where there are two terminal states and we
-    get a +1 reward when we terminate in one of them. Otherwise
-    the reward is 0.
+    get a +1 reward when we terminate in one of them and -1
+    in the other. Otherwise the reward is 0.
+
+    The output figure is slightly different to that of 
+    Figure 7.2. Here we take the RMSE at the end of the 10-th
+    episode, and do not average all 10 episodes. For this reason
+    our RMSE is smaller
 """
 
 class States:
@@ -85,9 +90,9 @@ class States:
         action = state.actions[action_number]
 
         if action.name == ACTION_TYPE_TO_STRING["left"]: 
-            new_state_num = max(state_num - 1, 0)
+            new_state_num = state_num - 1
         elif action.name == ACTION_TYPE_TO_STRING["right"]: 
-            new_state_num = min(state_num + 1, self.nstates-1)
+            new_state_num = state_num + 1
         elif action.name == ACTION_TYPE_TO_STRING["finish"]:
             new_state_num = state_num
         else:
@@ -442,10 +447,10 @@ def build_states(n):
                         default_actions = [ (ACTION_TYPE_TO_STRING["left"],0), 
                                             (ACTION_TYPE_TO_STRING["right"],0)])
 
-    states.update_state(0, [(ACTION_TYPE_TO_STRING["finish"],0)], state_value = 0.5)
-    states.update_state(1, [(ACTION_TYPE_TO_STRING["left"],-1), (ACTION_TYPE_TO_STRING["right"],0)], state_value = 0.5)
-    states.update_state(n-1, [(ACTION_TYPE_TO_STRING["finish"],0)], state_value = 0.5)
-    states.update_state(n-2, [(ACTION_TYPE_TO_STRING["left"],0), (ACTION_TYPE_TO_STRING["right"],1)], state_value = 0.5)
+    states.update_state(0, [(ACTION_TYPE_TO_STRING["finish"],0)], state_value = 0)
+    states.update_state(1, [(ACTION_TYPE_TO_STRING["left"],-1), (ACTION_TYPE_TO_STRING["right"],0)], state_value = 0)
+    states.update_state(n-1, [(ACTION_TYPE_TO_STRING["finish"],0)], state_value = 0)
+    states.update_state(n-2, [(ACTION_TYPE_TO_STRING["left"],0), (ACTION_TYPE_TO_STRING["right"],1)], state_value = 0)
 
     return states
 
@@ -588,6 +593,28 @@ def n_td_state_value_estimation(size, initial_states, n, alpha, episodes, plot =
 
     return rmse
 
+def plot_rmse(size, initial_states):
+    alphas = np.arange(0, 1, 0.05)
+    episodes = 10
+    repetitions = 100
+
+    ns = [2**i for i in range(8)]
+
+    for n in ns:
+        rmse_alpha = []
+        for alpha in alphas:
+            print "n:", n, "alpha:", alpha
+            rmses = []
+            for repetition in range(repetitions):
+                rmse = n_td_state_value_estimation(size, initial_states, n, alpha, episodes, plot=False)
+                rmses.append(rmse)
+            rmse_alpha.append(np.mean(rmses))
+
+        plt.plot(alphas, rmse_alpha, label="n = %d"%n)
+    plt.legend()
+    plt.gca().set_ylim([0,0.55])
+    plt.show()
+
 def main():
     seed = 123
     random.seed(seed)
@@ -596,23 +623,9 @@ def main():
     size = 19
 
     initial_states = [size/2]
-    alphas = np.arange(0.1, 1, 0.1)
-    episodes = 10
+
     #try_previous_methods(n, initial_states, alpha, episodes)
-    repetitions = 100
-
-    n = 2
-    rmse_alpha = []
-    for alpha in alphas:
-        rmses = []
-        for repetition in range(repetitions):
-            rmse = n_td_state_value_estimation(size, initial_states, n, alpha, episodes, plot=False)
-            rmses.append(rmse)
-        rmse_alpha.append(np.mean(rmses))
-
-    plt.plot(alphas, rmse_alpha)
-    plt.show()
-        
+    plot_rmse(size, initial_states)
 
 
 if __name__ == "__main__":
