@@ -9,11 +9,6 @@ import matplotlib.pyplot as plt
     Random walk where there are two terminal states and we
     get a +1 reward when we terminate in one of them and -1
     in the other. Otherwise the reward is 0.
-
-    The output figure is slightly different to that of 
-    Figure 7.2. Here we take the RMSE at the end of the 10-th
-    episode, and do not average all 10 episodes. For this reason
-    our RMSE is smaller
 """
 
 class States:
@@ -558,21 +553,33 @@ def compute_rmse(values, estimated_values):
 def n_td_state_value_estimation(size, initial_states, n, alpha, episodes, plot = False):
     n_td_states = build_states(size)
     n_td = N_step_TD()
-    n_td_length, n_td_rewards, n_td_zeros = learn(n_td, episodes, initial_states, n_td_states, alpha, n = n)
 
     right_value = np.arange(0, 1, 1/(size-1.))
     right_value = np.append(right_value, 0)
-    left_value = -right_value[::-1] #for symmetry
+    left_value = -right_value[::-1] #symmetry
     analytic_state_values = right_value + left_value
+    
+    n_td_length = []
+    n_td_rewards = []
+    n_td_zeros = []
+    n_td_rmse = []
 
-    avg_n_td_length = average_measures(n_td_length)
-    avg_n_td_rewards = average_measures(n_td_rewards)
-    avg_n_td_zeros = average_measures(n_td_zeros)
+    for i in range(episodes):
+        episode_n_td_length, episode_n_td_rewards, episode_n_td_zeros = learn(n_td, 1, initial_states, n_td_states, alpha, n = n)
 
-    values_n_td = n_td_states.get_state_values()
-    rmse = compute_rmse(analytic_state_values, values_n_td)
+        n_td_length.extend(episode_n_td_length)
+        n_td_rewards.extend(episode_n_td_rewards)
+        n_td_zeros.extend(episode_n_td_zeros)
+
+        rmse = compute_rmse(analytic_state_values, n_td_states.get_state_values())
+        n_td_rmse.append(rmse)
+
 
     if plot == True:
+        avg_n_td_length = average_measures(n_td_length)
+        avg_n_td_rewards = average_measures(n_td_rewards)
+        avg_n_td_zeros = average_measures(n_td_zeros)
+
         plt.figure(1)
         plt.subplot(221)
         plt.title("Average Rewards")
@@ -591,14 +598,14 @@ def n_td_state_value_estimation(size, initial_states, n, alpha, episodes, plot =
 
         plt.show()
 
-    return rmse
+    return n_td_rmse
 
 def plot_rmse(size, initial_states):
     alphas = np.arange(0, 1, 0.05)
     episodes = 10
     repetitions = 100
 
-    ns = [2**i for i in range(8)]
+    ns = [2**i for i in range(10)]
 
     for n in ns:
         rmse_alpha = []
@@ -606,8 +613,8 @@ def plot_rmse(size, initial_states):
             print "n:", n, "alpha:", alpha
             rmses = []
             for repetition in range(repetitions):
-                rmse = n_td_state_value_estimation(size, initial_states, n, alpha, episodes, plot=False)
-                rmses.append(rmse)
+                rmse_per_episode = n_td_state_value_estimation(size, initial_states, n, alpha, episodes, plot=False)
+                rmses.append(np.mean(rmse_per_episode))
             rmse_alpha.append(np.mean(rmses))
 
         plt.plot(alphas, rmse_alpha, label="n = %d"%n)
